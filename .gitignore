@@ -1,0 +1,24 @@
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated data
+data/raw_files/*
+*.duckdb
+*.db
+
+# Logs and exports
+logs/
+exports/
+
+# dbt generated files
+target/
+dbt_packages/
