@@ -7,7 +7,7 @@ DATA_DIR = Path('data/raw_files')
 KEYS = {
     'projects.csv': ['project_id'],
     'tasks.csv': ['task_id'],
-    'transactions.csv': ['project_id', 'cost_type'],
+    'transactions.csv': ['project_id', 'transaction_date', 'cost_type'],
     'timesheets.csv': ['project_id', 'resource_id', 'work_date']
 }
 
@@ -27,6 +27,37 @@ def check_negative_amounts(df, column):
 def check_hours_out_of_range(df):
     return ((df['hours'] < 4) | (df['hours'] > 8)).sum()
 
+def check_labor_costs(df):
+    expected = (
+        df['hours'] * df['hourly_rate_usd']
+    ).round(2)
+
+    return (
+        (df['labor_cost_usd'] - expected).abs() > 0.01
+    ).sum()
+
+def check_weekly_hours(df):
+    weekly = (
+        df.groupby(
+            ['project_id', 'resource_id', 'week_start']
+        )['hours']
+        .sum()
+    )
+
+    return (weekly > 40).sum()
+
+def check_week_start(df):
+    expected = (
+        pd.to_datetime(df['work_date'])
+        - pd.to_timedelta(
+            pd.to_datetime(df['work_date']).dt.day_of_week,
+            unit='D'
+        )
+    ).dt.normalize()
+
+    actual = pd.to_datetime(df['week_start'])
+
+    return (actual != expected).sum()
 
 
 def check_cost_reconciliation(projects, transactions):
@@ -124,6 +155,14 @@ def main():
     invalid_hours = check_hours_out_of_range(timesheets)
     print(f'Timesheets: {invalid_hours} registros con horas fuera de rango')
 
+    labor_errors = check_labor_costs(timesheets)
+    print(f'Timesheets: {labor_errors} errores de costo laboral')
+
+    weekly_errors = check_weekly_hours(timesheets)
+    print(f'Timesheets: {weekly_errors} semanas sobre 40 horas')
+
+    week_start_errors = check_week_start(timesheets)
+    print(f'Timesheets: {week_start_errors} fechas de inicio de semana incorrectas')
 
 if __name__ == '__main__':
     main()
